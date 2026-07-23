@@ -1,6 +1,6 @@
 # TaskFlow ⚡
 
-> **A sleek, modern desktop widget that stores your data in your OWN GitHub Repository.**
+> **A sleek, modern desktop widget that stores your data in your OWN private GitHub Repository.**
 > *No third-party servers. No proprietary databases. 100% privacy, full version control, and works seamlessly offline.*
 
 ---
@@ -8,10 +8,35 @@
 ## 🌟 Why TaskFlow?
 
 Most task apps lock your data in proprietary clouds or require complex server setups. **TaskFlow** takes a different approach:
-- **Your Own GitHub Repo as the Backend:** Every task added, completed, or reordered is committed and pushed directly to your personal GitHub repository.
+- **Your Own Private Repo as the Backend:** Keep the source code public, but store your actual tasks in your private repository or secret Gist!
+- **`tf-sync` CLI Tool:** Run `tf-sync` in your terminal to easily configure your private backup repository, view SSH keys, trigger instant pushes, or change backup intervals.
 - **100% Offline-First:** Works offline without delay. Changes are queued locally and pushed when connectivity returns.
 - **Apple-Inspired Design:** Features squircle symmetric rounding, smooth animations, dark mode, subtasks, due dates, and drag-and-drop reordering.
 - **Cross-Platform:** Native Quickshell widget for Linux (Hyprland, Sway, KDE, GNOME) and Rainmeter skin for Windows.
+
+---
+
+## 💻 `tf-sync` Terminal Configuration Tool
+
+TaskFlow comes with a CLI tool named `tf-sync` to manage your backup target and settings:
+
+```bash
+$ tf-sync
+```
+
+```text
+ ⚡ TaskFlow Configuration & Backup CLI (tf-sync)
+ ──────────────────────────────────────────────────
+ [1] ⚙️ Configure Target Backup Repository
+ [2] 🔑 View / Copy Public SSH Key
+ [3] 🚀 Run Backup Now (Push)
+ [4] 📊 Check Backup Status & History
+ [5] ⏱️ Change Auto-Backup Interval
+ [6] ❌ Exit
+```
+
+- **Instant Push:** Run `tf-sync push` anywhere in your terminal.
+- **View History:** Run `tf-sync status` to view git commit history & systemd timer health.
 
 ---
 
@@ -40,9 +65,9 @@ chmod +x install.sh
 ```
 
 > **What `install.sh` does automatically:**
-> 1. Detects your Linux distribution and verifies dependencies (`git`, `quickshell`).
-> 2. Sets up your local task state directory.
-> 3. Configures SSH keys for GitHub if needed.
+> 1. Detects your Linux distribution and verifies dependencies (`git`, `quickshell`, `python3`).
+> 2. Installs the `tf-sync` CLI executable to `~/.local/bin/tf-sync`.
+> 3. Sets up your local task state directory and symlinks `todo.json`.
 > 4. Enables a background `systemd` user timer (`taskflow-backup.timer`) for silent auto-backups.
 > 5. Prompts to clean up Windows-specific files.
 
@@ -53,12 +78,6 @@ chmod +x install.sh
 1. Ensure **[Rainmeter](https://www.rainmeter.net/)** and **[Git for Windows](https://git-scm.com/)** are installed.
 2. Clone or extract this repository to your computer.
 3. Right-click `install.bat` and select **Run as Administrator**.
-
-> **What `install.bat` does automatically:**
-> 1. Copies the `TaskFlow` skin into `%USERPROFILE%\Documents\Rainmeter\Skins\TaskFlow`.
-> 2. Configures a PowerShell background script (`backup.ps1`) for automatic GitHub commits.
-> 3. Refreshes Rainmeter to display the TaskFlow widget.
-> 4. Prompts to clean up Linux-specific files.
 
 ---
 
@@ -77,12 +96,12 @@ chmod +x install.sh
                              │ Symlink
                              ▼
                ┌───────────────────────────┐
-               │    Local Git Repository   │
+               │  tf-sync / Backup Script  │
                └─────────────┬─────────────┘
                              │ Auto-Push (Background Daemon)
                              ▼
                ┌───────────────────────────┐
-               │   Your GitHub Repository  │
+               │ Your Private GitHub Repo  │
                └───────────────────────────┘
 ```
 

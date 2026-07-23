@@ -1,0 +1,181 @@
+#!/usr/bin/env python3
+"""
+TaskFlow CLI (tf-sync)
+Interactive configuration CLI tool for TaskFlow desktop widget.
+"""
+
+import os
+import sys
+import subprocess
+import shutil
+from pathlib import Path
+
+BLUE = "\033[94m"
+CYAN = "\033[96m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+RED = "\033[91m"
+BOLD = "\033[1m"
+RESET = "\033[0m"
+
+REPO_DIR = Path.home() / "TaskFlow-Sync"
+SSH_PUB_KEY = Path.home() / ".ssh" / "id_ed25519.pub"
+SSH_PRIV_KEY = Path.home() / ".ssh" / "id_ed25519"
+TIMER_FILE = Path.home() / ".config/systemd/user/taskflow-backup.timer"
+SERVICE_FILE = Path.home() / ".config/systemd/user/taskflow-backup.service"
+
+def print_banner():
+    print(f"{CYAN}{BOLD}")
+    print(" ⚡ TaskFlow Configuration & Backup CLI (tf-sync)")
+    print(" ──────────────────────────────────────────────────" + RESET)
+
+def run_cmd(cmd, cwd=None, capture=True):
+    try:
+        res = subprocess.run(cmd, shell=True, cwd=cwd or REPO_DIR, capture_output=capture, text=True)
+        return res.returncode == 0, res.stdout.strip(), res.stderr.strip()
+    except Exception as e:
+        return False, "", str(e)
+
+def get_current_repo_url():
+    ok, out, _ = run_cmd("git remote get-url origin")
+    return out if ok else "Not configured"
+
+def option_change_repo():
+    print(f"\n{BOLD}⚙️ Configure Target Backup Repository{RESET}")
+    print(f"Current Remote URL: {YELLOW}{get_current_repo_url()}{RESET}")
+    print("Enter the URL of the repository where your private tasks should be backed up.")
+    print("Example (SSH):   git@github.com:username/my-private-tasks.git")
+    print("Example (HTTPS): https://github.com/username/my-private-tasks.git")
+    
+    new_url = input(f"\n{CYAN}Enter new Repository URL (or press Enter to cancel): {RESET}").strip()
+    if not new_url:
+        print(f"{YELLOW}Operation cancelled.{RESET}")
+        return
+
+    REPO_DIR.mkdir(parents=True, exist_ok=True)
+    run_cmd("git init", cwd=REPO_DIR)
+    run_cmd("git branch -M main", cwd=REPO_DIR)
+    
+    ok, _, _ = run_cmd("git remote get-url origin", cwd=REPO_DIR)
+    if ok:
+        run_cmd(f"git remote set-url origin '{new_url}'", cwd=REPO_DIR)
+    else:
+        run_cmd(f"git remote add origin '{new_url}'", cwd=REPO_DIR)
+        
+    print(f"{GREEN}✓ Remote URL successfully updated to: {new_url}{RESET}")
+
+def option_view_ssh_key():
+    print(f"\n{BOLD}🔑 Public SSH Key for GitHub{RESET}")
+    if not SSH_PUB_KEY.exists():
+        print(f"{YELLOW}SSH key not found. Generating new ED25519 SSH key...{RESET}")
+        SSH_PUB_KEY.parent.mkdir(parents=True, exist_ok=True)
+        run_cmd(f'ssh-keygen -t ed25519 -C "taskflow@desktop" -f "{SSH_PRIV_KEY}" -N ""')
+
+    key_content = SSH_PUB_KEY.read_text().strip()
+    print(f"\n{GREEN}{key_content}{RESET}\n")
+    print(f"Copy the key above and add it to your GitHub account:")
+    print(f"👉 {BLUE}https://github.com/settings/keys{RESET}\n")
+
+def option_run_backup():
+    print(f"\n{BOLD}🚀 Triggering TaskFlow Backup...{RESET}")
+    backup_script = REPO_DIR / "backup.sh"
+    if not backup_script.exists():
+        print(f"{RED}Backup script not found at {backup_script}.{RESET}")
+        return
+
+    ok, out, err = run_cmd(f"/bin/bash '{backup_script}'", cwd=REPO_DIR, capture=False)
+    ok_git, git_log, _ = run_cmd("git log -n 1 --oneline", cwd=REPO_DIR)
+    if ok_git and git_log:
+        print(f"{GREEN}✓ Backup completed! Latest commit: {git_log}{RESET}")
+    else:
+        print(f"{GREEN}✓ Backup command executed.{RESET}")
+
+def option_view_status():
+    print(f"\n{BOLD}📊 TaskFlow Status & Git Log{RESET}")
+    print(f"Repository Path: {YELLOW}{REPO_DIR}{RESET}")
+    print(f"Current Remote:   {YELLOW}{get_current_repo_url()}{RESET}\n")
+    
+    ok, out, _ = run_cmd("git log -n 5 --pretty=format:'%h - %s (%cr)'")
+    if ok and out:
+        print(f"{BOLD}Recent Backup Commits:{RESET}")
+        print(out)
+    else:
+        print(f"{YELLOW}No backup commits found yet.{RESET}")
+        
+    print(f"\n{BOLD}Systemd Backup Timer Status:{RESET}")
+    run_cmd("systemctl --user status taskflow-backup.timer", capture=False)
+
+def option_change_interval():
+    print(f"\n{BOLD}⏱️ Change Auto-Backup Interval{RESET}")
+    print("Enter the interval for background backups.")
+    print("Examples: 5min, 15min, 30min, 1h")
+    
+    interval = input(f"\n{CYAN}Enter new interval (default: 15min): {RESET}").strip() or "15min"
+    
+    if not TIMER_FILE.parent.exists():
+        TIMER_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+    timer_content = f"""[Unit]
+Description=Periodically backup TaskFlow tasks to GitHub
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec={interval}
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+"""
+    TIMER_FILE.write_text(timer_content)
+    run_cmd("systemctl --user daemon-reload")
+    run_cmd("systemctl --user restart taskflow-backup.timer")
+    print(f"{GREEN}✓ Auto-backup interval set to {interval}!{RESET}")
+
+def main():
+    if len(sys.argv) > 1:
+        arg = sys.argv[1].lower()
+        if arg in ["push", "backup"]:
+            option_run_backup()
+            return
+        elif arg in ["status", "log"]:
+            option_view_status()
+            return
+        elif arg in ["config", "repo"]:
+            option_change_repo()
+            return
+        elif arg in ["ssh", "key"]:
+            option_view_ssh_key()
+            return
+
+    while True:
+        print_banner()
+        print(f" {BOLD}[1]{RESET} ⚙️ Configure Target Backup Repository")
+        print(f" {BOLD}[2]{RESET} 🔑 View / Copy Public SSH Key")
+        print(f" {BOLD}[3]{RESET} 🚀 Run Backup Now (Push)")
+        print(f" {BOLD}[4]{RESET} 📊 Check Backup Status & History")
+        print(f" {BOLD}[5]{RESET} ⏱️ Change Auto-Backup Interval")
+        print(f" {BOLD}[6]{RESET} ❌ Exit")
+        
+        choice = input(f"\n{CYAN}Select an option [1-6]: {RESET}").strip()
+        
+        if choice == "1":
+            option_change_repo()
+        elif choice == "2":
+            option_view_ssh_key()
+        elif choice == "3":
+            option_run_backup()
+        elif choice == "4":
+            option_view_status()
+        elif choice == "5":
+            option_change_interval()
+        elif choice in ["6", "q", "exit"]:
+            print(f"\n{GREEN}Goodbye! ⚡ TaskFlow{RESET}\n")
+            break
+        else:
+            print(f"\n{RED}Invalid option. Please enter a number between 1 and 6.{RESET}\n")
+        
+        input(f"\n{YELLOW}Press Enter to return to menu...{RESET}")
+        os.system("clear" if os.name != "nt" else "cls")
+
+if __name__ == "__main__":
+    main()

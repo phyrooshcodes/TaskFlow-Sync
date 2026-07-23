@@ -2,7 +2,7 @@
 # ─── TaskFlow Smart One-Shot Installer for Linux ─────────────────────────────
 set -e
 
-BOLD="\031[1m"
+BOLD="\033[1m"
 GREEN="\033[32m"
 BLUE="\033[34m"
 YELLOW="\033[33m"
@@ -19,7 +19,7 @@ fi
 echo -e "${GREEN}✓ Detected OS:${RESET} $DISTRO"
 
 # 2. Verify dependencies
-for cmd in git curl; do
+for cmd in git curl python3; do
     if ! command -v $cmd &>/dev/null; then
         echo -e "${YELLOW}⚠️ Command '$cmd' not found. Installing dependencies may be required.${RESET}"
     fi
@@ -29,11 +29,13 @@ done
 QUICKSHELL_DIR="$HOME/.config/quickshell/ii"
 STATE_DIR="$HOME/.local/state/quickshell/user"
 REPO_DIR="$HOME/TaskFlow-Sync"
+BIN_DIR="$HOME/.local/bin"
 
 mkdir -p "$QUICKSHELL_DIR/services"
 mkdir -p "$QUICKSHELL_DIR/modules/ii/background/widgets/todo"
 mkdir -p "$STATE_DIR"
 mkdir -p "$REPO_DIR"
+mkdir -p "$BIN_DIR"
 
 # 4. Copy QML Files
 if [ -d "linux/quickshell" ]; then
@@ -41,7 +43,14 @@ if [ -d "linux/quickshell" ]; then
     cp -r linux/quickshell/widgets/* "$QUICKSHELL_DIR/modules/ii/background/widgets/todo/" 2>/dev/null || true
 fi
 
-# 5. Initialize Git Repository & Symlink
+# 5. Install CLI tool tf-sync
+if [ -f "bin/tf-sync" ]; then
+    cp bin/tf-sync "$BIN_DIR/tf-sync"
+    chmod +x "$BIN_DIR/tf-sync"
+    echo -e "${GREEN}✓ Installed 'tf-sync' CLI to $BIN_DIR/tf-sync${RESET}"
+fi
+
+# 6. Initialize Git Repository & Symlink
 cd "$REPO_DIR"
 if [ ! -d ".git" ]; then
     git init
@@ -56,8 +65,7 @@ fi
 [ ! -f "$REPO_DIR/todo.json" ] && echo '{"lists":[],"currentListId":"","tasks":{}}' > "$REPO_DIR/todo.json"
 ln -sf "$REPO_DIR/todo.json" "$STATE_DIR/todo.json"
 
-# 6. Install Backup Script
-mkdir -p "$HOME/.local/bin"
+# 7. Install Backup Script
 cat << 'EOF' > "$REPO_DIR/backup.sh"
 #!/usr/bin/env bash
 REPO_DIR="$HOME/TaskFlow-Sync"
@@ -71,7 +79,7 @@ fi
 EOF
 chmod +x "$REPO_DIR/backup.sh"
 
-# 7. Setup Systemd Timer
+# 8. Setup Systemd Timer
 SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
 mkdir -p "$SYSTEMD_USER_DIR"
 
@@ -100,7 +108,7 @@ EOF
 systemctl --user daemon-reload || true
 systemctl --user enable --now taskflow-backup.timer || true
 
-# 8. Clean up Windows files on request
+# 9. Clean up Windows files on request
 read -p "Do you want to clean up Windows-specific files (install.bat, windows/)? [y/N] " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -109,4 +117,4 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 echo -e "\n${GREEN}${BOLD}🎉 TaskFlow installation complete!${RESET}"
-echo -e "Your tasks will now automatically back up to your GitHub repository in the background.\n"
+echo -e "Type ${CYAN}tf-sync${RESET} in your terminal anytime to configure your private backup repository or manage settings.\n"
