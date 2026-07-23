@@ -440,13 +440,30 @@ AbstractBackgroundWidget {
                                 }
 
                                 // ─ Delete Widget (Temporary Hide) ─
-                                MenuButton {
+                                RippleButton {
                                     Layout.fillWidth: true
-                                    buttonText: Translation.tr("Delete Widget")
-                                    textColor: Appearance.colors.colError
+                                    implicitHeight: 32
+                                    buttonRadius: Appearance.rounding.small
+                                    colBackground: ColorUtils.transparentize(Appearance.colors.colErrorContainer, 0.3)
+                                    colBackgroundHover: Appearance.colors.colErrorContainerHover
+                                    colRipple: Appearance.colors.colErrorContainerActive
                                     onClicked: {
                                         overflowMenu.close();
                                         root.visible = false;
+                                    }
+                                    contentItem: RowLayout {
+                                        anchors.centerIn: parent
+                                        spacing: 6
+                                        MaterialSymbol {
+                                            text: "delete"; iconSize: Appearance.font.pixelSize.normal
+                                            color: Appearance.colors.colError
+                                        }
+                                        StyledText {
+                                            text: Translation.tr("Delete Widget")
+                                            font.pixelSize: Appearance.font.pixelSize.small
+                                            font.weight: Font.Medium
+                                            color: Appearance.colors.colError
+                                        }
                                     }
                                 }
                             }
