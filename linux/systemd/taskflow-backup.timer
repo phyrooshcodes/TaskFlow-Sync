@@ -1,0 +1,10 @@
+[Unit]
+Description=Periodically backup TaskFlow tasks to GitHub
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

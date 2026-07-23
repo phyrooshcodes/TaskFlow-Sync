@@ -1,0 +1,6 @@
+[Unit]
+Description=Auto-backup TaskFlow tasks to GitHub
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash %h/TaskFlow-Sync/backup.sh
