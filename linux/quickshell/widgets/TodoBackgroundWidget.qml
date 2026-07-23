@@ -438,6 +438,17 @@ AbstractBackgroundWidget {
                                     buttonText: Translation.tr("Refresh from disk")
                                     onClicked: { overflowMenu.close(); Todo.refresh(); }
                                 }
+
+                                // ─ Delete Widget (Temporary Hide) ─
+                                MenuButton {
+                                    Layout.fillWidth: true
+                                    buttonText: Translation.tr("Delete Widget")
+                                    textColor: Appearance.colors.colError
+                                    onClicked: {
+                                        overflowMenu.close();
+                                        root.visible = false;
+                                    }
+                                }
                             }
                         }
                     }
