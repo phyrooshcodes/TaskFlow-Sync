@@ -7,8 +7,8 @@ import Quickshell.Io;
 import QtQuick;
 
 /**
- * TaskFlow Singleton Service.
- * Manages task lists, list switching, task completion, and persistence.
+ * Simple to-do list manager.
+ * Each item is an object with "content" and "done" properties.
  */
 Singleton {
     id: root
@@ -47,7 +47,7 @@ Singleton {
             fullData.tasks[currentListId] = list;
         }
         todoFileView.watchChanges = false;
-        todoFileView.setText(JSON.stringify(fullData));
+        todoFileView.setText(JSON.stringify(fullData, null, 2));
         todoFileView.watchChanges = true;
     }
     
@@ -112,6 +112,7 @@ Singleton {
         path: Qt.resolvedUrl(root.filePath)
         watchChanges: true
         onFileChanged: {
+            // Only reload if we aren't the ones currently writing it!
             if (todoFileView.watchChanges) {
                 todoFileView.reload()
             }
@@ -119,24 +120,30 @@ Singleton {
         onLoaded: {
             try {
                 const fileContents = todoFileView.text()
+                // Support legacy format gracefully during migration
                 let parsed = JSON.parse(fileContents)
                 if (Array.isArray(parsed)) {
-                    root.fullData = { lists: [], currentListId: "", tasks: {"legacy": parsed} }
+                    root.fullData = { lists: [{id: "legacy", name: "Legacy Tasks"}], currentListId: "legacy", tasks: {"legacy": parsed} }
                     root.currentListId = "legacy"
                 } else {
                     root.fullData = parsed
                 }
                 root.updateFromData()
+                console.log("[To Do] File loaded")
             } catch (e) {
-                console.log("[TaskFlow] Parse error: " + e)
+                console.log("[To Do] Parse error: " + e)
             }
         }
         onLoadFailed: (error) => {
             if(error == FileViewError.FileNotFound) {
+                console.log("[To Do] File not found, creating new file.")
                 root.fullData = { lists: [], currentListId: "", tasks: {} }
                 root.updateFromData()
                 root.saveFile()
+            } else {
+                console.log("[To Do] Error loading file: " + error)
             }
         }
     }
 }
+

@@ -6,6 +6,10 @@ if [[ -f todo.json ]]; then
     git add -f todo.json
     if ! git diff --cached --quiet; then
         git commit -m "Auto-backup $(date '+%Y-%m-%d %H:%M:%S')"
-        git push origin main >> /home/qwen/TaskFlow-Sync/backup.log 2>&1
     fi
 fi
+
+# Sync with remote to fetch new tasks and prevent push rejection
+git pull --rebase origin main >> /home/qwen/TaskFlow-Sync/backup.log 2>&1 || git rebase --abort
+
+git push origin main >> /home/qwen/TaskFlow-Sync/backup.log 2>&1

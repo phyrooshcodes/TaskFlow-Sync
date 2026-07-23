@@ -31,7 +31,8 @@ def print_banner():
 
 def run_cmd(cmd, cwd=None, capture=True):
     try:
-        res = subprocess.run(cmd, shell=True, cwd=cwd or REPO_DIR, capture_output=capture, text=True)
+        is_shell = isinstance(cmd, str)
+        res = subprocess.run(cmd, shell=is_shell, cwd=cwd or REPO_DIR, capture_output=capture, text=True)
         return res.returncode == 0, res.stdout.strip(), res.stderr.strip()
     except Exception as e:
         return False, "", str(e)
@@ -58,9 +59,9 @@ def option_change_repo():
     
     ok, _, _ = run_cmd("git remote get-url origin", cwd=REPO_DIR)
     if ok:
-        run_cmd(f"git remote set-url origin '{new_url}'", cwd=REPO_DIR)
+        run_cmd(["git", "remote", "set-url", "origin", new_url], cwd=REPO_DIR)
     else:
-        run_cmd(f"git remote add origin '{new_url}'", cwd=REPO_DIR)
+        run_cmd(["git", "remote", "add", "origin", new_url], cwd=REPO_DIR)
         
     print(f"{GREEN}✓ Remote URL successfully updated to: {new_url}{RESET}")
 
@@ -110,7 +111,13 @@ def option_change_interval():
     print("Enter the interval for background backups.")
     print("Examples: 5min, 15min, 30min, 1h")
     
+    import re
     interval = input(f"\n{CYAN}Enter new interval (default: 15min): {RESET}").strip() or "15min"
+    
+    # Sanitize input to prevent systemd unit injection
+    if not re.match(r'^\d+[a-zA-Z]+$', interval):
+        print(f"{RED}Invalid interval format. Use numbers followed by units (e.g. 15min).{RESET}")
+        return
     
     if not TIMER_FILE.parent.exists():
         TIMER_FILE.parent.mkdir(parents=True, exist_ok=True)

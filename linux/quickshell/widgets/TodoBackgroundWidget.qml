@@ -42,6 +42,15 @@ AbstractBackgroundWidget {
     property bool selectionMode:    false
     property var  selectedIndices:  []   // list of originalIndex values
 
+    property bool isSyncing: false
+    
+    Process {
+        id: backupProcess
+        command: ["bash", "/home/qwen/TaskFlow-Sync/backup.sh"]
+        running: false
+        onExited: root.isSyncing = false
+    }
+
     // ─── Helpers ────────────────────────────────────────────────────────────
     function submitNewTask() {
         const txt = newTaskField.text.trim();
@@ -98,6 +107,16 @@ AbstractBackgroundWidget {
         border.width: 1
         border.color: ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.55)
         clip: true
+
+        HoverHandler {
+            onHoveredChanged: {
+                if (hovered && root.addInputVisible) {
+                    newTaskField.forceActiveFocus()
+                } else if (!hovered) {
+                    newTaskField.focus = false
+                }
+            }
+        }
 
         ColumnLayout {
             id: cardCol
@@ -419,16 +438,17 @@ AbstractBackgroundWidget {
                                     color: ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.6)
                                 }
 
-                                // ─ Sync with Google Tasks ─
+                                // ─ Sync with Repo ─
                                 MenuButton {
                                     Layout.fillWidth: true
                                     buttonText: root.isSyncing
                                         ? Translation.tr("Syncing…")
-                                        : Translation.tr("Sync with Google Tasks")
+                                        : Translation.tr("Sync with Repo")
                                     enabled: !root.isSyncing
                                     onClicked: {
                                         overflowMenu.close();
-                                        root.triggerDebouncedSync();
+                                        root.isSyncing = true;
+                                        backupProcess.running = true;
                                     }
                                 }
 
